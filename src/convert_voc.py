@@ -4,7 +4,7 @@ import os
 import six
 from xml.etree import ElementTree
 
-pickle = six.moves.pickle
+pickle = six.moves.cPickle
 
 object_names = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car',
                 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse',
@@ -14,7 +14,7 @@ object_ids = {name: i for i, name in enumerate(object_names)}
 
 def parse_object(elem):
     label = object_ids[elem.find('name').text]
-    box_elem = elem.find('bondbox')
+    box_elem = elem.find('bndbox')
     left = int(box_elem.find('xmin').text)
     right = int(box_elem.find('xmax').text)
     top = int(box_elem.find('ymin').text)
@@ -28,20 +28,26 @@ def parse_file(file_path):
     xml_file = os.path.basename(file_path)
     image_file = root.find('filename').text
     elem = root.find('size')
-    record['width'] = int(elem.find('width').text)
-    record['height'] = int(elem.find('height').text)
+    image_width = int(elem.find('width').text)
+    image_height = int(elem.find('height').text)
     elems = root.findall('object')
     objects = map(parse_object, elems)
-    return (xml_file, image_file, (width, height), objects)
+    return (xml_file, image_file, (image_width, image_height), objects)
 
 def parse_dir(dir_path):
+    items = []
     files = os.listdir(dir_path)
-
-    for file_path in files:
-        if os.path.splitext(file_path)[1] == '.xml':
-            parse_file(file_path)
+    for file_name in files:
+        if os.path.splitext(file_name)[1] == '.xml':
+            items.append(parse_file(os.path.join(dir_path, file_name)))
+    return items
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('annotation_dir', type=str, help='directory path that contains annotation XML files')
-    args = parse.parse_args()
+    parser.add_argument('out_path', type=str, help='output pickle file path')
+    args = parser.parse_args()
+
+    annotations = parse_dir(args.annotation_dir)
+    with open(args.out_path, 'wb') as f:
+        pickle.dump(annotations, f, pickle.HIGHEST_PROTOCOL)
