@@ -1,0 +1,3 @@
+[submodule "dataset/caltech-pedestrian-converter"]
+	path = dataset/caltech-pedestrian-converter
+	url = https://github.com/dsanno/caltech-pedestrian-converter
