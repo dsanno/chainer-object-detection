@@ -1,0 +1,4 @@
+*.pyc
+*.weights
+*.model
+result/*
