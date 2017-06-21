@@ -83,7 +83,7 @@ class YOLOv2(Chain):
             conv20 = L.Convolution2D(1024, 1024, ksize=3, stride=1, pad=1, nobias=True),
             bn20   = L.BatchNormalization(1024, use_beta=False),
             bias20 = L.Bias(shape=(1024,)),
-            conv21 = L.Convolution2D(512, 64, ksize=3, stride=1, pad=1, nobias=True),
+            conv21 = L.Convolution2D(512, 64, ksize=1, stride=1, pad=0, nobias=True),
             bn21   = L.BatchNormalization(64, use_beta=False),
             bias21 = L.Bias(shape=(64,)),
             conv22 = L.Convolution2D(1024 + 64 * 4, 1024, ksize=3, stride=1, pad=1, nobias=True),

@@ -20,6 +20,7 @@ from lib import utils
 
 DEFAULT_CONFIG = {
     'categories': None,
+    'input_size': None,
 }
 IMAGE_PATH_EXTENSIONS = ['.jpg', '.png']
 
@@ -58,12 +59,13 @@ class CocoPredictor:
     def to_cpu(self):
         self.model.to_cpu()
 
-    def __call__(self, orig_img):
+    def __call__(self, orig_img, input_size=None):
         xp = self.model.xp
         orig_input_height, orig_input_width, _ = orig_img.shape
-        #img = cv2.resize(orig_img, (640, 640))
-#        img = utils.reshape_to_yolo_size(orig_img)
-        img = cv2.resize(orig_img, (800, 608))
+        if input_size is not None:
+            img = cv2.resize(orig_img, input_size)
+        else:
+            img = orig_img
         input_height, input_width, _ = img.shape
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = np.asarray(img, dtype=np.float32) / 255.0
@@ -129,7 +131,6 @@ def main():
 
     chainer.config.train = False
     chainer.config.enable_backprop = False
-    chainer.config.use_cudnn = 'never'
 
     image_dir = args.image_dir
     gpu_id = args.gpu
@@ -139,6 +140,10 @@ def main():
     if config_path is not None:
         with open(config_path) as f:
             config.update(json.load(f))
+    if config['input_size'] is None:
+        input_size = None
+    else:
+        input_size = tuple(config['input_size'])
 
     predictor = CocoPredictor(args.model_path, config)
     if gpu_id >= 0:
@@ -150,7 +155,7 @@ def main():
         # read image
         print('loading image {}...'.format( os.path.relpath(image_path, image_dir)))
         orig_img = cv2.imread(image_path)
-        raw_regions = predictor(orig_img)
+        raw_regions = predictor(orig_img, )
         regions = []
         for raw_region in raw_regions:
             box = raw_region['box']
@@ -159,8 +164,8 @@ def main():
             width = box.w
             height = box.h
             regions.append({
-                'x': x,
-                'y': y,
+                'x': x - width * 0.5,
+                'y': y - height * 0.5,
                 'width': width,
                 'height': height,
                 'category': raw_region['label'],
