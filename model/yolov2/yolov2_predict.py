@@ -65,7 +65,7 @@ class CocoPredictor:
         if input_size is not None:
             img = cv2.resize(orig_img, input_size)
         else:
-            img = orig_img
+            img = utils.reshape_to_yolo_size(orig_img)
         input_height, input_width, _ = img.shape
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = np.asarray(img, dtype=np.float32) / 255.0
