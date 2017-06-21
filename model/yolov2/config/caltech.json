@@ -1,3 +1,4 @@
 {
-  "categories": ["person"]
+  "categories": ["person"],
+  "input_size": [800, 800]
 }
