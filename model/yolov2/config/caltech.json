@@ -1,4 +1,5 @@
 {
   "categories": ["person"],
-  "input_size": [800, 800]
+  "input_size": [800, 800],
+  "dataset_dir": "C:\\project_2\\dataset\\caltech-pedestrian-converter\\data\\train_images\\set00\\V000"
 }

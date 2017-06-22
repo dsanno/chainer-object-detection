@@ -10,7 +10,9 @@ from chainer import Chain
 import chainer.links as L
 import chainer.functions as F
 
+from lib.utils import box_iou
 from lib.utils import multi_box_iou
+from lib.utils import Box
 from lib.functions import reorg
 
 class YOLOv2(Chain):
@@ -183,13 +185,17 @@ class YOLOv2Predictor(Chain):
             y_shift = np.broadcast_to(np.arange(grid_h, dtype=np.float32).reshape(grid_h, 1), y.shape[1:])
             w_anchor = np.broadcast_to(np.reshape(np.array(self.anchors, dtype=np.float32)[:, 0], (self.predictor.n_boxes, 1, 1, 1)), w.shape[1:])
             h_anchor = np.broadcast_to(np.reshape(np.array(self.anchors, dtype=np.float32)[:, 1], (self.predictor.n_boxes, 1, 1, 1)), h.shape[1:])
+            x_data = cuda.to_cpu(x.data)
+            y_data = cuda.to_cpu(y.data)
+            w_data = cuda.to_cpu(w.data)
+            h_data = cuda.to_cpu(h.data)
             best_ious = []
             for batch in range(batch_size):
                 n_truth_boxes = len(t[batch])
-                box_x = (x[batch] + x_shift) / grid_w
-                box_y = (y[batch] + y_shift) / grid_h
-                box_w = F.exp(w[batch]) * w_anchor / grid_w
-                box_h = F.exp(h[batch]) * h_anchor / grid_h
+                box_x = (x_data[batch] + x_shift) / grid_w
+                box_y = (y_data[batch] + y_shift) / grid_h
+                box_w = np.exp(w_data[batch]) * w_anchor / grid_w
+                box_h = np.exp(h_data[batch]) * h_anchor / grid_h
 
                 ious = []
                 for truth_index in range(n_truth_boxes):
@@ -198,15 +204,18 @@ class YOLOv2Predictor(Chain):
                     truth_box_w = np.broadcast_to(np.array(t[batch][truth_index]["w"], dtype=np.float32), box_w.shape)
                     truth_box_h = np.broadcast_to(np.array(t[batch][truth_index]["h"], dtype=np.float32), box_h.shape)
                     ious.append(multi_box_iou(Box(box_x, box_y, box_w, box_h), Box(truth_box_x, truth_box_y, truth_box_w, truth_box_h)))
-                ious = np.asrray(ious)
-                best_ious.append(np.max(ious, axis=0))
+                if len(ious) > 0:
+                    ious = np.asarray(ious)
+                    best_ious.append(np.max(ious, axis=0))
+                else:
+                    best_ious.append(np.zeros_like(x_data[0]))
             best_ious = np.array(best_ious)
 
             # keep confidence of anchor that has more confidence then threshold
             tconf[best_ious > self.thresh] = conf.data.get()[best_ious > self.thresh]
             conf_learning_scale[best_ious > self.thresh] = 0
 
-            # objectの存在するanchor boxのみ、x、y、w、h、conf、probを個別修正
+            # adjust x, y, w, h, conf, prob of anchor boxes that have objects
             abs_anchors = self.anchors / np.array([grid_w, grid_h])
             for batch in range(batch_size):
                 for truth_box in t[batch]:
@@ -239,24 +248,6 @@ class YOLOv2Predictor(Chain):
                     tconf[batch, truth_n, :, truth_h, truth_w] = predicted_iou
                     conf_learning_scale[batch, truth_n, :, truth_h, truth_w] = 10.0
 
-                # debug prints
-                maps = F.transpose(prob[batch], (2, 3, 1, 0)).data
-                six.print_("best confidences and best conditional probability and predicted class of each grid:")
-                for i in range(grid_h):
-                    for j in range(grid_w):
-                        six.print_("%2d" % (int(conf[batch, :, :, i, j].data.max() * 100)), end=" ")
-                    six.print_("     ", end="")
-                    for j in range(grid_w):
-                        six.print_("%2d" % (maps[i][j][int(maps[i][j].max(axis=1).argmax())].argmax()), end=" ")
-                    six.print_("     ", end="")
-                    for j in range(grid_w):
-                        six.print_("%2d" % (maps[i][j][int(maps[i][j].max(axis=1).argmax())].max()*100), end=" ")
-                    six.print_()
-
-                six.print_("best default iou: %.2f   predicted iou: %.2f   confidence: %.2f   class: %s" % (best_iou, predicted_iou, conf[batch][truth_n][0][truth_h][truth_w].data, t[batch][0]["label"]))
-                six.print_("-------------------------------")
-            six.print_("seen = %d" % self.seen)
-
             tx = cuda.to_gpu(tx)
             ty = cuda.to_gpu(ty)
             tw = cuda.to_gpu(tw)
@@ -264,7 +255,6 @@ class YOLOv2Predictor(Chain):
             tconf = cuda.to_gpu(tconf)
             tprob = cuda.to_gpu(tprob)
 
-            tx.to_gpu(), ty.to_gpu(), tw.to_gpu(), th.to_gpu(), tconf.to_gpu(), tprob.to_gpu()
             box_learning_scale = cuda.to_gpu(box_learning_scale)
             conf_learning_scale = cuda.to_gpu(conf_learning_scale)
 
@@ -274,12 +264,7 @@ class YOLOv2Predictor(Chain):
             h_loss = F.sum((th - h) ** 2 * box_learning_scale) / 2
             c_loss = F.sum((tconf - conf) ** 2 * conf_learning_scale) / 2
             p_loss = F.sum((tprob - prob) ** 2) / 2
-            six.print_("x_loss: %f  y_loss: %f  w_loss: %f  h_loss: %f  c_loss: %f   p_loss: %f" %
-                (F.sum(x_loss).data, F.sum(y_loss).data, F.sum(w_loss).data, F.sum(h_loss).data, F.sum(c_loss).data, F.sum(p_loss).data)
-            )
-
-            loss = x_loss + y_loss + w_loss + h_loss + c_loss + p_loss
-            return loss
+            return x_loss, y_loss, w_loss, h_loss, c_loss, p_loss
 
     def init_anchor(self, anchors):
         self.anchors = anchors

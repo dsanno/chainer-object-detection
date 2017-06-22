@@ -97,7 +97,7 @@ def multi_overlap(x1, len1, x2, len2):
     len1_half = len1/2
     len2_half = len2/2
 
-    xp = get_array_module(x1)
+    xp = cuda.get_array_module(x1)
     left = xp.maximum(x1 - len1_half, x2 - len2_half)
     right = xp.minimum(x1 + len1_half, x2 + len2_half)
 
@@ -116,8 +116,8 @@ def multi_box_intersection(a, b):
     w = multi_overlap(a.x, a.w, b.x, b.w)
     h = multi_overlap(a.y, a.h, b.y, b.h)
 
-    xp = get_array_module(w)
-    zeros = xp.zers_like(w)
+    xp = cuda.get_array_module(w)
+    zeros = xp.zeros_like(w)
 
     w = xp.maximum(w, zeros)
     h = xp.maximum(h, zeros)
