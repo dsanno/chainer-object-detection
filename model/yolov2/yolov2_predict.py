@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import cv2
 import json
 import glob
 import os
 import time
 import numpy as np
+from PIL import Image
 
 import chainer
 from chainer import cuda
@@ -19,8 +19,25 @@ from lib import utils
 
 
 DEFAULT_CONFIG = {
-    'categories': None,
-    'input_size': None,
+    'categories': [
+        'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train',
+        'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign',
+        'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+        'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella',
+        'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard',
+        'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard',
+        'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork',
+        'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+        'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair',
+        'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv',
+        'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
+        'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+        'scissors','teddy bear','hair drier','toothbrush'
+    ],
+    'anchors': [[0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434],
+        [7.88282, 3.52778], [9.77052, 9.16828]],
+    'iou': 0.5,
+    'confidence': 0.01,
 }
 IMAGE_PATH_EXTENSIONS = ['.jpg', '.png']
 
@@ -34,18 +51,18 @@ def parse_args():
     parser.add_argument('--config', '-c', type=str, default=None, help='Configuration file path')
     return parser.parse_args()
 
-class CocoPredictor:
+class Predictor:
     def __init__(self, model_path, config):
         # hyper parameters
-        self.n_classes = 80
         self.n_boxes = 5
-        self.detection_thresh = 0.01
-        self.iou_thresh = 0.5
         self.config = config
-        self.labels = ['person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','couch','potted plant','bed','dining table','toilet','tv','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush']
-        anchors = [[0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434], [7.88282, 3.52778], [9.77052, 9.16828]]
+        self.labels = config['categories']
+        self.n_classes = len(self.labels)
+        self.detection_thresh = config['confidence']
+        self.iou_thresh = config['iou']
+        anchors = config['anchors']
         # load model
-        print('loading coco model...')
+        print('loading model...')
         yolov2 = YOLOv2(n_classes=self.n_classes, n_boxes=self.n_boxes)
         serializers.load_npz(model_path, yolov2)
         model = YOLOv2Predictor(yolov2)
@@ -61,13 +78,12 @@ class CocoPredictor:
 
     def __call__(self, orig_img, input_size=None):
         xp = self.model.xp
-        orig_input_height, orig_input_width, _ = orig_img.shape
+        orig_input_width, orig_input_height = orig_img.size
         if input_size is not None:
-            img = cv2.resize(orig_img, input_size)
+            img = orig_img.resize(input_size)
         else:
             img = utils.reshape_to_yolo_size(orig_img)
-        input_height, input_width, _ = img.shape
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        input_width, input_height = img.size
         img = np.asarray(img, dtype=np.float32) / 255.0
         img = img.transpose(2, 0, 1)
 
@@ -97,7 +113,6 @@ class CocoPredictor:
         h = h[detected_indices]
         conf = conf[detected_indices]
         prob = prob.transpose(1, 2, 3, 0)[detected_indices]
-        categories = self.config.get('categories', None)
         results = []
         for i in range(detected_indices.sum()):
             class_id = prob[i].argmax()
@@ -145,7 +160,7 @@ def main():
     else:
         input_size = tuple(config['input_size'])
 
-    predictor = CocoPredictor(args.model_path, config)
+    predictor = Predictor(args.model_path, config)
     if gpu_id >= 0:
         cuda.get_device(gpu_id).use()
         predictor.to_gpu(gpu_id)
@@ -154,8 +169,8 @@ def main():
     for image_path in find_files(image_dir, IMAGE_PATH_EXTENSIONS):
         # read image
         print('loading image {}...'.format( os.path.relpath(image_path, image_dir)))
-        orig_img = cv2.imread(image_path)
-        raw_regions = predictor(orig_img, )
+        orig_img = Image.open(image_path)
+        raw_regions = predictor(orig_img, input_size)
         regions = []
         for raw_region in raw_regions:
             box = raw_region['box']
@@ -164,10 +179,7 @@ def main():
             width = box.w
             height = box.h
             regions.append({
-                'x': x - width * 0.5,
-                'y': y - height * 0.5,
-                'width': width,
-                'height': height,
+                'bbox': [x - width * 0.5, y - height * 0.5, width, height],
                 'category': raw_region['label'],
                 'confidence': float(raw_region['probs'].max() * raw_region['conf']),
             })
@@ -177,7 +189,7 @@ def main():
         })
 
     with open(args.output_path, 'w') as f:
-        json.dump(results, f)
+        json.dump(results, f, indent=0)
 
 if __name__ == '__main__':
     main()

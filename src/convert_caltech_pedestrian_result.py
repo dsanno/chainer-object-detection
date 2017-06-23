@@ -31,10 +31,7 @@ def main():
         for region in result['regions']:
             if region['category'] != 'person':
                 continue
-            x = region['x']
-            y = region['y']
-            w = region['width']
-            h = region['height']
+            x, y, w, h = region['bbox']
             confidence = region['confidence']
             boxes.append((frame, x, y, w, h, confidence))
     for set_name, seqs in results.items():

@@ -4,7 +4,6 @@
 from chainer import cuda
 import chainer.functions as F
 import numpy as np
-import cv2
 
 def print_cnn_info(name, link, shape_before, shape_after, time):
     n_stride = (
@@ -198,6 +197,6 @@ def reshape_to_yolo_size(img):
 
     input_width = int(input_width / 32.0 + round(input_width % 32 / 32.0)) * 32
     input_height = int(input_height / 32.0 + round(input_height % 32 / 32.0)) * 32
-    img = cv2.resize(img, (input_width, input_height))
+    img = img.resize((input_width, input_height))
 
     return img
