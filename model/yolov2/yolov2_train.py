@@ -258,10 +258,5 @@ def main():
     save_path = os.path.join(model_dir, '{0}.model'.format(prefix))
     serializers.save_npz(save_path, yolov2)
 
-    # backward and optimize
-    optimizer.zero_grads()
-    loss.backward()
-    optimizer.update()
-
 if __name__ == '__main__':
     main()
