@@ -99,13 +99,13 @@ def convert_category_to_index(regions, categories):
     regions = map(lambda x: _category_to_index(x, categories), regions)
     return regions
 
-def convert_regions(regions, crop_rect, min_width, min_height,
+def convert_regions(regions, crop_rect, input_size, min_width, min_height,
         min_visible_ratio):
     ground_truths = []
     cx, cy, cw, ch = crop_rect
     for region in regions:
         x, y, w, h = region['bbox']
-        if w < min_width or h < min_height:
+        if float(w) / cw * input_size < min_width or float(h) / ch * input_size < min_height:
             continue
         if region.has_key('visible_bbox'):
             vx, vy, vw, vh = region['visible_bbox']
@@ -137,7 +137,8 @@ def load_image(file_path):
     return Image.open(file_path).convert('RGB')
 
 def transform_image(image, crop_rect, input_size):
-    image = image.crop(crop_rect).resize((input_size, input_size))
+    cx, cy, cw, ch = crop_rect
+    image = image.crop((cx, cy, cx + cw, cy + ch)).resize((input_size, input_size))
     image = np.asarray(image, dtype=np.float32) / 255.0
     image = image.transpose(2, 0, 1)
     return image
@@ -151,7 +152,7 @@ def randomize_crop_rect(image_width, image_height, crop_size):
     crop_size = min(image_width, image_height, crop_size)
     x = np.random.randint(0, image_width - crop_size)
     y = np.random.randint(0, image_height - crop_size)
-    return x, y, image_width, image_height
+    return x, y, crop_size, crop_size
 
 def main():
     args = parse_args()
@@ -222,8 +223,8 @@ def main():
             image_width, image_height = image.size
             crop_rect = randomize_crop_rect(image_width, image_height, crop_size)
             image_batch.append(transform_image(image, crop_rect, train_size))
-            label_batch.append(convert_regions(regions, crop_rect, min_width,
-                min_height, min_visible_ratio))
+            label_batch.append(convert_regions(regions, crop_rect, train_size,
+                min_width, min_height, min_visible_ratio))
 
         x = xp.asarray(image_batch)
         x_loss, y_loss, w_loss, h_loss, c_loss, p_loss = model(x, label_batch)
