@@ -8,6 +8,8 @@ import os
 import time
 import numpy as np
 from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
 
 import chainer
 from chainer import cuda
@@ -49,6 +51,9 @@ def parse_args():
     parser.add_argument('model_path', type=str, help='Model file path')
     parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU device ID, negative value indicates CPU')
     parser.add_argument('--config', '-c', type=str, default=None, help='Configuration file path')
+    parser.add_argument('--output-image', '-o', type=str, default=None, help='Output image directory')
+    parser.add_argument('--confidence', type=float, default=0.3, help='Confidence threshold for output image')
+    parser.add_argument('--min-height', type=float, default=40, help='Minimum height for output image')
     return parser.parse_args()
 
 class Predictor:
@@ -148,6 +153,10 @@ def main():
     chainer.config.enable_backprop = False
 
     image_dir = args.image_dir
+    output_image_dir = args.output_image
+    image_confidence_threshold = args.confidence
+    image_min_height = args.min_height
+    font = ImageFont.truetype("arial.ttf", 14)
     gpu_id = args.gpu
     config = {}
     config.update(DEFAULT_CONFIG)
@@ -159,6 +168,13 @@ def main():
         input_size = None
     else:
         input_size = tuple(config['input_size'])
+    if output_image_dir is not None:
+        if not os.path.exists(output_image_dir):
+            os.mkdir(output_image_dir)
+        else:
+            if os.listdir(output_image_dir) != []:
+                print('Error: output image directory must be empty.')
+                exit()
 
     predictor = Predictor(args.model_path, config)
     if gpu_id >= 0:
@@ -168,7 +184,8 @@ def main():
     results = []
     for image_path in find_files(image_dir, IMAGE_PATH_EXTENSIONS):
         # read image
-        print('loading image {}...'.format( os.path.relpath(image_path, image_dir)))
+        relpath = os.path.relpath(image_path, image_dir)
+        print('loading image {}...'.format(relpath))
         orig_img = Image.open(image_path)
         raw_regions = predictor(orig_img, input_size)
         regions = []
@@ -187,6 +204,24 @@ def main():
             'file_path': image_path,
             'regions': regions,
         })
+
+        if output_image_dir is not None:
+            output_image_path = os.path.join(output_image_dir, relpath)
+            directroy = os.path.dirname(output_image_path)
+            if not os.path.exists(directroy):
+                os.makedirs(directroy)
+            draw = ImageDraw.Draw(orig_img)
+            for region in regions:
+                confidence = region['confidence']
+                if confidence < image_confidence_threshold:
+                    continue
+                x, y, w, h = region['bbox']
+                if h < image_min_height:
+                    continue
+                draw.rectangle((x, y, x + w, y + h), outline=(255, 0, 0))
+                label = '{0:.2f}'.format(confidence)
+                draw.text((x, y), label, (255, 128, 128), font=font)
+            orig_img.save(output_image_path)
 
     with open(args.output_path, 'w') as f:
         json.dump(results, f, indent=0)
