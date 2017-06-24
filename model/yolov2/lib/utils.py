@@ -166,17 +166,16 @@ def random_hsv_image(bgr_image, delta_hue, delta_sat_scale, delta_val_scale):
 # non maximum suppression
 def nms(predicted_results, iou_thresh):
     nms_results = []
-    for i in range(len(predicted_results)):
-        overlapped = False
-        for j in range(i+1, len(predicted_results)):
-            if box_iou(predicted_results[i]["box"], predicted_results[j]["box"]) > iou_thresh:
-                overlapped = True
-                if predicted_results[i]["objectness"] > predicted_results[j]["objectness"]:
-                    temp = predicted_results[i]
-                    predicted_results[i] = predicted_results[j]
-                    predicted_results[j] = temp
-        if not overlapped:
-            nms_results.append(predicted_results[i])
+    results = sorted(predicted_results, key=lambda x: x['objectness'], reverse=True)
+    for result in results:
+        result['available'] = True
+    for i, result in enumerate(results):
+        if not result['available']:
+            continue
+        for result2 in results[i + 1:]:
+            if box_iou(result['box'], result2['box']) > iou_thresh:
+                result2['available'] = False
+        nms_results.append(result)
     return nms_results
 
 # reshape to yolo size
