@@ -7,8 +7,9 @@ import six
 import chainer
 from chainer import cuda
 from chainer import Chain
-import chainer.links as L
-import chainer.functions as F
+from chainer import initializers
+from chainer import links as L
+from chainer import functions as F
 
 from lib.utils import box_iou
 from lib.utils import multi_box_iou
@@ -91,7 +92,9 @@ class YOLOv2(Chain):
             conv22 = L.Convolution2D(1024 + 64 * 4, 1024, ksize=3, stride=1, pad=1, nobias=True),
             bn22   = L.BatchNormalization(1024, use_beta=False),
             bias22 = L.Bias(shape=(1024,)),
-            conv23 = L.Convolution2D(1024, n_boxes * (5 + n_classes), ksize=1, stride=1, pad=0, nobias=True),
+            conv23 = L.Convolution2D(1024, n_boxes * (5 + n_classes), ksize=1,
+                stride=1, pad=0, nobias=True,
+                initialW=initializers.Constant(0)),
             bias23 = L.Bias(shape=(n_boxes * (5 + n_classes),)),
         )
         self.finetune = False
@@ -142,7 +145,7 @@ class YOLOv2Predictor(Chain):
     def __init__(self, predictor):
         super(YOLOv2Predictor, self).__init__(predictor=predictor)
         self.anchors = [[0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434], [7.88282, 3.52778], [9.77052, 9.16828]]
-        self.thresh = 0.6
+        self.thresh = 0.7
         self.seen = 0
         self.unstable_seen = 5000
 
@@ -211,7 +214,7 @@ class YOLOv2Predictor(Chain):
                     best_ious.append(np.zeros_like(x_data[0]))
             best_ious = np.array(best_ious)
 
-            # keep confidence of anchor that has more confidence then threshold
+            # keep confidence of anchor that has more confidence than threshold
             tconf[best_ious > self.thresh] = conf.data.get()[best_ious > self.thresh]
             conf_learning_scale[best_ious > self.thresh] = 0
 
