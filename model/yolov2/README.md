@@ -9,7 +9,21 @@ $ wget http://pjreddie.com/media/files/yolo.weights
 ## Convert YOLO v2 original model to Chainer model
 
 ```
-$ python darknet_parser.py yolo.weights
+$ python darknet_parser.py darkent_weight_file output_model_path
+```
+
+Parameters:
+* `darkent_weight_file`: (Required)Darknet YOLOv2 weight file path(usually `yolo.weights`)
+* `output_model_path`: (Required)Output model file path
+* `-c class_num`: (Optional) Number of classes. (default: 80)
+* `-b box_num`: (Optional) Number of anchor boxes. (default: 5)
+
+Note that last layer weights are copied only when both `class_num` and `box_num` are same as those of original model.
+
+Example:
+
+```
+$ python darknet_parser.py yolo.weights yolov2.model
 ```
 
 ## Predict
