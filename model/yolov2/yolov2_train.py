@@ -105,8 +105,6 @@ def convert_regions(regions, crop_rect, input_size, min_width, min_height,
     cx, cy, cw, ch = crop_rect
     for region in regions:
         x, y, w, h = region['bbox']
-        if float(w) / cw * input_size < min_width or float(h) / ch * input_size < min_height:
-            continue
         if region.has_key('visible_bbox'):
             vx, vy, vw, vh = region['visible_bbox']
         else:
@@ -123,6 +121,8 @@ def convert_regions(regions, crop_rect, input_size, min_width, min_height,
         y2 = min(max(y + h - cy, 0), ch)
         scale_x = 1.0 / cw
         scale_y = 1.0 / ch
+        if x2 - x1 < min_width or y2 - y1 < min_height:
+            continue
         ground_truths.append({
             'x': (x1 + x2) * 0.5 * scale_x,
             'y': (y1 + y2) * 0.5 * scale_y,
@@ -150,8 +150,8 @@ def make_data(image_path, annotation_path, categories):
 
 def randomize_crop_rect(image_width, image_height, crop_size):
     crop_size = min(image_width, image_height, crop_size)
-    x = np.random.randint(0, image_width - crop_size)
-    y = np.random.randint(0, image_height - crop_size)
+    x = np.random.randint(0, image_width - crop_size + 1)
+    y = np.random.randint(0, image_height - crop_size + 1)
     return x, y, crop_size, crop_size
 
 def main():
@@ -246,7 +246,11 @@ def main():
         ))
         iteration += 1
         if iterator.is_new_epoch:
-            if iterator.epoch % learning_decay_epoch == 0:
+            if isinstance(learning_decay_epoch, list):
+                if iterator.epoch in learning_decay_epoch:
+                    learning_rate *= learning_decay_ratio
+                    optimizer.lr = learning_rate
+            elif iterator.epoch % learning_decay_epoch == 0:
                 learning_rate *= learning_decay_ratio
                 optimizer.lr = learning_rate
             if iterator.epoch % save_epoch == 0:
