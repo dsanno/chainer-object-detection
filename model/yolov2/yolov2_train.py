@@ -177,7 +177,7 @@ def main():
     model.predictor.finetune = False
     if initial_model_path is not None:
         print("loading initial model...")
-        serializers.load_npz(initial_model_path, model)
+        serializers.load_npz(initial_model_path, model.predictor)
 
     gpu_id = args.gpu
     xp = np
