@@ -6,5 +6,18 @@
   "min_width": 1,
   "min_height": 20,
   "confidence": 0.01,
+  "prefix": "yolov2",
+  "batch_size": 8,
+  "epoch": 50,
+  "learning_rate": 1e-4,
+  "momentum": 0.9,
+  "learning_decay_ratio": 0.1,
+  "learning_decay_epoch": [40, 45],
+  "burn_in": 1000,
+  "weight_decay": 0.005,
+  "save_epoch": 1,
+  "min_width": 1,
+  "min_height": 20,
+  "min_visible_ratio": 0.5,
   "dataset_dir": "Fill here"
 }
