@@ -31,11 +31,13 @@ def parse_args():
 def iou(bounding_box1, bounding_box2):
     x1, y1, w1, h1 = bounding_box1
     x2, y2, w2, h2 = bounding_box2
-    iw = min(x1 + w1, x2 + x2) - max(x1, x2)
+    iw = min(x1 + w1, x2 + w2) - max(x1, x2)
     ih = min(y1 + h1, y2 + h2) - max(y1, y2)
-    if iw <= 0 or ih <= 0:
-        return 0
-    return w1 * h1 + w2 * h2 - iw * ih
+    if iw <= 0:
+        iw = 0
+    if ih <= 0:
+        ih = 0
+    return float(iw * ih) / (w1 * h1 + w2 * h2 - iw * ih)
 
 def crop_image(image, bounding_box):
     image_width, image_height = image.size
@@ -118,30 +120,54 @@ def main():
     count = 0
     for image_path, annotation_path in find_files(dataset_dir, IMAGE_PATH_EXTENSIONS):
         image = Image.open(image_path)
+        image_width, image_height = image.size
         with open(annotation_path) as f:
             annotation = json.load(f)
         regions = annotation['regions']
+        avoid_regions = filter(lambda x: x['category'] in avoid_categories, regions)
         for region in regions:
             category = region['category']
             if not category in categories:
                 continue
             x, y, w, h = region['bbox']
             vx, vy, vw, vh = region['visible_bbox']
+            if not category in categories:
+                continue
             if w < min_width or h < min_height:
                 continue
             if float(vw * vh) / (w * h) < min_visible_ratio:
                 continue
-            if category in categories:
-                object_image = crop_image(image, region['bbox'])
-                output_path = os.path.join(output_dir, category, '{0:06d}.jpg'.format(count))
-                object_image.save(output_path)
-                count += 1
-        avoid_regions = filter(lambda x: x['category'] in avoid_categories, regions)
-        background_image = crop_background(image, avoid_regions, avoid_iou_threshold)
-        if background_image is not None:
+            object_image = crop_image(image, region['bbox'])
+            output_path = os.path.join(output_dir, category, '{0:06d}.jpg'.format(count))
+            object_image.save(output_path)
+            count += 1
+            # add near region to background images
+            if np.random.randint(0, 1) < 1:
+                bx1 = int(x + w)
+                by1 = int(y - 4)
+                bx2 = bx1 + int(h) + 8
+                by2 = by1 + int(h) + 8
+            else:
+                bx1 = int(x - h) - 8
+                by1 = int(y - 4)
+                bx2 = bx1 + int(h) + 8
+                by2 = by1 + int(h) + 8
+            if by1 < 0:
+                by1 = 0
+            if by2 > image_height:
+                by2 = image_height
+            crop_rect = (bx1, by1, bx2, by2)
+            bounding_box = (bx1, by1, bx2 - bx1, by2 - by1)
+            if bx1 >= 0 and bx2 <= image_width and not has_object(bounding_box, avoid_regions, avoid_iou_threshold):
+                background_image = image.crop(crop_rect)
                 output_path = os.path.join(output_dir, background_category, '{0:06d}.jpg'.format(count))
                 background_image.save(output_path)
                 count += 1
+        background_image = crop_background(image, avoid_regions, avoid_iou_threshold)
+        if background_image is not None:
+            output_path = os.path.join(output_dir, background_category, '{0:06d}.jpg'.format(count))
+            background_image.save(output_path)
+            count += 1
 
 
 if __name__ == '__main__':
