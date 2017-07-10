@@ -6,7 +6,7 @@
   "min_width": 1,
   "min_height": 20,
   "confidence": 0.01,
-  "prefix": "yolov2",
+  "prefix": "yolov2_caltech",
   "batch_size": 8,
   "epoch": 50,
   "learning_rate": 1e-4,
