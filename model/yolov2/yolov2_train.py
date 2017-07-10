@@ -138,7 +138,7 @@ def load_image(file_path):
 
 def transform_image(image, crop_rect, input_size):
     cx, cy, cw, ch = crop_rect
-    image = image.crop((cx, cy, cx + cw, cy + ch)).resize((input_size, input_size))
+    image = image.crop((cx, cy, cx + cw, cy + ch)).resize((input_size, input_size), Image.BILINEAR)
     image = np.asarray(image, dtype=np.float32) / 255.0
     image = image.transpose(2, 0, 1)
     return image

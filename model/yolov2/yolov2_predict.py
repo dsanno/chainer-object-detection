@@ -85,7 +85,7 @@ class Predictor:
         xp = self.model.xp
         orig_input_width, orig_input_height = orig_img.size
         if input_size is not None:
-            img = orig_img.resize(input_size)
+            img = orig_img.resize(input_size, Image.BILINEAR)
         else:
             img = utils.reshape_to_yolo_size(orig_img)
         input_width, input_height = img.size
