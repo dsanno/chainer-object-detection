@@ -429,7 +429,3 @@ class YOLOv2Classifier(Chain):
         h = F.average_pooling_2d(h, h.shape[-2:])
         h = self.fc19(h)
         return h
-#        h = self.conv19(h)
-#        h = F.average_pooling_2d(h, h.data.shape[-2:])
-#        h = F.reshape(h, (h.shape[0], -1))
-#        return h
