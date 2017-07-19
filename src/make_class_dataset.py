@@ -13,8 +13,8 @@ DEFAULT_CONFIG = {
     'categories': ['person'],
     'background_category': 'background',
     'avoid_categories': [],
-    'min_width': 5,
-    'min_height': 20,
+    'min_width': 10,
+    'min_height': 50,
     'min_visible_ratio': 0.5,
     'avoid_iou_threshold': 0.2,
 }
@@ -65,11 +65,12 @@ def has_object(bounding_box, regions, iou_threshold):
             return True
     return False
 
-def crop_background(image, avoid_regions, iou_threshold):
+def crop_background(image, avoid_regions, iou_threshold, min_crop_size=64):
     image_width, image_height = image.size
-    max_size = min(image_width, image_height)
+    max_crop_size = min(image_width, image_height)
+    scale = np.log(float(max_crop_size) / min_crop_size)
     for i in six.moves.range(100):
-        size = (np.random.randint(max_size // 32) + 1) * 32
+        size = int(np.exp(np.random.random() * scale) * min_crop_size)
         x = np.random.randint(0, image_width - size + 1)
         y = np.random.randint(0, image_height - size + 1)
         bounding_box = (x, y, size, size)
