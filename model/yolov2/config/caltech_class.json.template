@@ -1,0 +1,18 @@
+{
+  "train_dataset_dir": "fill here",
+  "test_dataset_dir": null,
+  "crop_margin": 8,
+  "train_sizes": [224],
+  "test_size": 224,
+  "initial_model_path": null,
+  "model_dir": "model",
+  "prefix": "yolov2_class",
+  "batch_size": 16,
+  "epoch": 30,
+  "learning_rate": 0.1,
+  "momentum": 0.9,
+  "learning_decay_ratio": 0.1,
+  "learning_decay_epoch": 10,
+  "weight_decay": 0.0005,
+  "save_epoch": 1
+}
