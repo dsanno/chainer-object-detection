@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='Convert YOLO v2 model file to Chai
 parser.add_argument('file', help='YOLO v2 weights file')
 parser.add_argument('out_file', help='Output file path')
 parser.add_argument('--class-num', '-c', type=int, default=80, help='Number of classes')
-parser.add_argument('--box-num', '-b', type=int, default=50, help='Number of boxes')
+parser.add_argument('--box-num', '-b', type=int, default=5, help='Number of boxes')
 args = parser.parse_args()
 
 print('loading', args.file)
