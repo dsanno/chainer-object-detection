@@ -24,72 +24,73 @@ class YOLOv2(Chain):
     """
 
     def __init__(self, n_classes, n_boxes):
+        initialW = initializers.HeNormal()
         super(YOLOv2, self).__init__(
-            conv1  = L.Convolution2D(3, 32, ksize=3, stride=1, pad=1, nobias=True),
+            conv1  = L.Convolution2D(3, 32, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn1    = L.BatchNormalization(32, use_beta=False, eps=2e-5),
             bias1  = L.Bias(shape=(32,)),
-            conv2  = L.Convolution2D(32, 64, ksize=3, stride=1, pad=1, nobias=True),
+            conv2  = L.Convolution2D(32, 64, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn2    = L.BatchNormalization(64, use_beta=False, eps=2e-5),
             bias2  = L.Bias(shape=(64,)),
-            conv3  = L.Convolution2D(64, 128, ksize=3, stride=1, pad=1, nobias=True),
+            conv3  = L.Convolution2D(64, 128, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn3    = L.BatchNormalization(128, use_beta=False, eps=2e-5),
             bias3  = L.Bias(shape=(128,)),
-            conv4  = L.Convolution2D(128, 64, ksize=1, stride=1, pad=0, nobias=True),
+            conv4  = L.Convolution2D(128, 64, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn4    = L.BatchNormalization(64, use_beta=False, eps=2e-5),
             bias4  = L.Bias(shape=(64,)),
-            conv5  = L.Convolution2D(64, 128, ksize=3, stride=1, pad=1, nobias=True),
+            conv5  = L.Convolution2D(64, 128, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn5    = L.BatchNormalization(128, use_beta=False, eps=2e-5),
             bias5  = L.Bias(shape=(128,)),
-            conv6  = L.Convolution2D(128, 256, ksize=3, stride=1, pad=1, nobias=True),
+            conv6  = L.Convolution2D(128, 256, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn6    = L.BatchNormalization(256, use_beta=False, eps=2e-5),
             bias6  = L.Bias(shape=(256,)),
-            conv7  = L.Convolution2D(256, 128, ksize=1, stride=1, pad=0, nobias=True),
+            conv7  = L.Convolution2D(256, 128, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn7    = L.BatchNormalization(128, use_beta=False, eps=2e-5),
             bias7  = L.Bias(shape=(128,)),
-            conv8  = L.Convolution2D(128, 256, ksize=3, stride=1, pad=1, nobias=True),
+            conv8  = L.Convolution2D(128, 256, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn8    = L.BatchNormalization(256, use_beta=False, eps=2e-5),
             bias8  = L.Bias(shape=(256,)),
-            conv9  = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True),
+            conv9  = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn9    = L.BatchNormalization(512, use_beta=False, eps=2e-5),
             bias9  = L.Bias(shape=(512,)),
-            conv10 = L.Convolution2D(512, 256, ksize=1, stride=1, pad=0, nobias=True),
+            conv10 = L.Convolution2D(512, 256, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn10   = L.BatchNormalization(256, use_beta=False, eps=2e-5),
             bias10 = L.Bias(shape=(256,)),
-            conv11 = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True),
+            conv11 = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn11   = L.BatchNormalization(512, use_beta=False, eps=2e-5),
             bias11 = L.Bias(shape=(512,)),
-            conv12 = L.Convolution2D(512, 256, ksize=1, stride=1, pad=0, nobias=True),
+            conv12 = L.Convolution2D(512, 256, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn12   = L.BatchNormalization(256, use_beta=False, eps=2e-5),
             bias12 = L.Bias(shape=(256,)),
-            conv13 = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True),
+            conv13 = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn13   = L.BatchNormalization(512, use_beta=False, eps=2e-5),
             bias13 = L.Bias(shape=(512,)),
-            conv14 = L.Convolution2D(512, 1024, ksize=3, stride=1, pad=1, nobias=True),
+            conv14 = L.Convolution2D(512, 1024, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn14   = L.BatchNormalization(1024, use_beta=False, eps=2e-5),
             bias14 = L.Bias(shape=(1024,)),
-            conv15 = L.Convolution2D(1024, 512, ksize=1, stride=1, pad=0, nobias=True),
+            conv15 = L.Convolution2D(1024, 512, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn15   = L.BatchNormalization(512, use_beta=False, eps=2e-5),
             bias15 = L.Bias(shape=(512,)),
-            conv16 = L.Convolution2D(512, 1024, ksize=3, stride=1, pad=1, nobias=True),
+            conv16 = L.Convolution2D(512, 1024, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn16   = L.BatchNormalization(1024, use_beta=False, eps=2e-5),
             bias16 = L.Bias(shape=(1024,)),
-            conv17 = L.Convolution2D(1024, 512, ksize=1, stride=1, pad=0, nobias=True),
+            conv17 = L.Convolution2D(1024, 512, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn17   = L.BatchNormalization(512, use_beta=False, eps=2e-5),
             bias17 = L.Bias(shape=(512,)),
-            conv18 = L.Convolution2D(512, 1024, ksize=3, stride=1, pad=1, nobias=True),
+            conv18 = L.Convolution2D(512, 1024, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn18   = L.BatchNormalization(1024, use_beta=False, eps=2e-5),
             bias18 = L.Bias(shape=(1024,)),
 
-            conv19 = L.Convolution2D(1024, 1024, ksize=3, stride=1, pad=1, nobias=True),
+            conv19 = L.Convolution2D(1024, 1024, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn19   = L.BatchNormalization(1024, use_beta=False),
             bias19 = L.Bias(shape=(1024,)),
-            conv20 = L.Convolution2D(1024, 1024, ksize=3, stride=1, pad=1, nobias=True),
+            conv20 = L.Convolution2D(1024, 1024, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn20   = L.BatchNormalization(1024, use_beta=False),
             bias20 = L.Bias(shape=(1024,)),
-            conv21 = L.Convolution2D(512, 64, ksize=1, stride=1, pad=0, nobias=True),
+            conv21 = L.Convolution2D(512, 64, ksize=1, stride=1, pad=0, nobias=True, initialW=initialW),
             bn21   = L.BatchNormalization(64, use_beta=False),
             bias21 = L.Bias(shape=(64,)),
-            conv22 = L.Convolution2D(1024 + 64 * 4, 1024, ksize=3, stride=1, pad=1, nobias=True),
+            conv22 = L.Convolution2D(1024 + 64 * 4, 1024, ksize=3, stride=1, pad=1, nobias=True, initialW=initialW),
             bn22   = L.BatchNormalization(1024, use_beta=False),
             bias22 = L.Bias(shape=(1024,)),
             conv23 = L.Convolution2D(1024, n_boxes * (5 + n_classes), ksize=1,
@@ -146,10 +147,11 @@ class YOLOv2Predictor(Chain):
         super(YOLOv2Predictor, self).__init__(predictor=predictor)
         self.anchors = [[0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434], [7.88282, 3.52778], [9.77052, 9.16828]]
         self.thresh = 0.7
+        self.ignore_thresh = 0.1
         self.seen = 0
-        self.unstable_seen = 5000
+        self.unstable_seen = 15000
 
-    def __call__(self, input_x, t):
+    def __call__(self, input_x, t, ignore_t):
         if isinstance(input_x, chainer.Variable):
             device = cuda.get_device(input_x.data)
         else:
@@ -217,6 +219,34 @@ class YOLOv2Predictor(Chain):
             # keep confidence of anchor that has more confidence than threshold
             tconf[best_ious > self.thresh] = conf.data.get()[best_ious > self.thresh]
             conf_learning_scale[best_ious > self.thresh] = 0
+
+            # ignored regions are not considered either positive or negative
+
+            best_ious = []
+            for batch in range(batch_size):
+                n_truth_boxes = len(ignore_t[batch])
+                box_x = (x_data[batch] + x_shift) / grid_w
+                box_y = (y_data[batch] + y_shift) / grid_h
+                box_w = np.exp(w_data[batch]) * w_anchor / grid_w
+                box_h = np.exp(h_data[batch]) * h_anchor / grid_h
+
+                ious = []
+                for truth_index in range(n_truth_boxes):
+                    truth_box_x = np.broadcast_to(np.array(ignore_t[batch][truth_index]["x"], dtype=np.float32), box_x.shape)
+                    truth_box_y = np.broadcast_to(np.array(ignore_t[batch][truth_index]["y"], dtype=np.float32), box_y.shape)
+                    truth_box_w = np.broadcast_to(np.array(ignore_t[batch][truth_index]["w"], dtype=np.float32), box_w.shape)
+                    truth_box_h = np.broadcast_to(np.array(ignore_t[batch][truth_index]["h"], dtype=np.float32), box_h.shape)
+                    ious.append(multi_box_iou(Box(box_x, box_y, box_w, box_h), Box(truth_box_x, truth_box_y, truth_box_w, truth_box_h)))
+                if len(ious) > 0:
+                    ious = np.asarray(ious)
+                    best_ious.append(np.max(ious, axis=0))
+                else:
+                    best_ious.append(np.zeros_like(x_data[0]))
+            best_ious = np.array(best_ious)
+
+            # do not update confidence for ignored regions
+            tconf[best_ious > self.ignore_thresh] = conf.data.get()[best_ious > self.ignore_thresh]
+            conf_learning_scale[best_ious > self.ignore_thresh] = 0
 
             # adjust x, y, w, h, conf, prob of anchor boxes that have objects
             abs_anchors = self.anchors / np.array([grid_w, grid_h])

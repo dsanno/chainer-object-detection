@@ -35,6 +35,7 @@ DEFAULT_CONFIG = {
         'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
         'scissors','teddy bear','hair drier','toothbrush'
     ],
+    'ignore_categories': [],
     'anchors': [[0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434], [7.88282, 3.52778], [9.77052, 9.16828]],
     'dataset_dir': None,
     'crop_size': 384,
@@ -83,9 +84,12 @@ def load_annotation(file_path):
 
 def _category_to_index(region, categories):
     category = region['category']
-    category_index = categories.index(category)
     one_hot_category = np.zeros(len(categories), dtype=np.float32)
-    one_hot_category[category_index] = 1
+    if category in categories:
+        category_index = categories.index(category)
+        one_hot_category[category_index] = 1
+    else:
+        category_index = -1
     result = {}
     result.update(region)
     result.update({
@@ -94,16 +98,19 @@ def _category_to_index(region, categories):
     })
     return result
 
-def convert_category_to_index(regions, categories):
-    regions = filter(lambda x: x['category'] in categories, regions)
+def convert_category_to_index(regions, categories, ignore_categories):
+    all_categories = categories + ignore_categories
+    regions = filter(lambda x: x['category'] in all_categories, regions)
     regions = map(lambda x: _category_to_index(x, categories), regions)
     return regions
 
 def convert_regions(regions, crop_rect, input_size, min_width, min_height,
         min_visible_ratio):
     ground_truths = []
+    ignored = []
     cx, cy, cw, ch = crop_rect
     for region in regions:
+        ignore = (region['category_index'] < 0)
         x, y, w, h = region['bbox']
         if region.has_key('visible_bbox'):
             vx, vy, vw, vh = region['visible_bbox']
@@ -114,7 +121,7 @@ def convert_regions(regions, crop_rect, input_size, min_width, min_height,
         vy1 = min(max(vy - cy, 0), ch)
         vy2 = min(max(vy + vh - cy, 0), ch)
         if float((vx2 - vx1) * (vy2 - vy1)) / (w * h) < min_visible_ratio:
-            continue
+            ignore = True
         x1 = min(max(x - cx, 0), cw)
         x2 = min(max(x + w - cx, 0), cw)
         y1 = min(max(y - cy, 0), ch)
@@ -122,16 +129,26 @@ def convert_regions(regions, crop_rect, input_size, min_width, min_height,
         scale_x = 1.0 / cw
         scale_y = 1.0 / ch
         if x2 - x1 < min_width or y2 - y1 < min_height:
-            continue
-        ground_truths.append({
-            'x': (x1 + x2) * 0.5 * scale_x,
-            'y': (y1 + y2) * 0.5 * scale_y,
-            'w': (x2 - x1) * scale_x,
-            'h': (y2 - y1) * scale_y,
-            'label': region['category_index'],
-            'one_hot_label': region['category_one_hot']
-        })
-    return ground_truths
+            ignore = True
+        if ignore:
+            ignored.append({
+                'x': (x1 + x2) * 0.5 * scale_x,
+                'y': (y1 + y2) * 0.5 * scale_y,
+                'w': (x2 - x1) * scale_x,
+                'h': (y2 - y1) * scale_y,
+                'label': -1,
+                'one_hot_label': None,
+            })
+        else:
+            ground_truths.append({
+                'x': (x1 + x2) * 0.5 * scale_x,
+                'y': (y1 + y2) * 0.5 * scale_y,
+                'w': (x2 - x1) * scale_x,
+                'h': (y2 - y1) * scale_y,
+                'label': region['category_index'],
+                'one_hot_label': region['category_one_hot'],
+            })
+    return ground_truths, ignored
 
 def load_image(file_path):
     return Image.open(file_path).convert('RGB')
@@ -143,10 +160,11 @@ def transform_image(image, crop_rect, input_size):
     image = image.transpose(2, 0, 1)
     return image
 
-def make_data(image_path, annotation_path, categories):
+def make_data(image_path, annotation_path, categories, ignore_categories):
     with open(annotation_path) as f:
         annotation = json.load(f)
-    return image_path, convert_category_to_index(annotation['regions'], categories)
+    return image_path, convert_category_to_index(annotation['regions'],
+        categories, ignore_categories)
 
 def randomize_crop_rect(image_width, image_height, crop_size):
     crop_size = min(image_width, image_height, crop_size)
@@ -162,13 +180,14 @@ def main():
         config.update(json.load(f))
 
     categories = config['categories']
+    ignore_categories = config['ignore_categories']
     anchors = config['anchors']
     initial_model_path = config['initial_model_path']
 
     print("loading annotations")
     dataset = find_files(config['dataset_dir'], IMAGE_PATH_EXTENSIONS)
-    dataset = [make_data(image_path, annotation_path, categories)
-               for image_path, annotation_path in dataset]
+    dataset = [make_data(image_path, annotation_path, categories,
+        ignore_categories) for image_path, annotation_path in dataset]
 
     # load model
     yolov2 = YOLOv2(n_classes=len(categories), n_boxes=len(anchors))
@@ -218,16 +237,19 @@ def main():
         train_size = train_sizes[np.random.randint(0, len(train_sizes))]
         image_batch = []
         label_batch = []
+        ignore_label_batch = []
         for image_path, regions in batch:
             image = load_image(image_path)
             image_width, image_height = image.size
             crop_rect = randomize_crop_rect(image_width, image_height, crop_size)
             image_batch.append(transform_image(image, crop_rect, train_size))
-            label_batch.append(convert_regions(regions, crop_rect, train_size,
-                min_width, min_height, min_visible_ratio))
+            label, ignore_label = convert_regions(regions, crop_rect,
+                train_size, min_width, min_height, min_visible_ratio)
+            label_batch.append(label)
+            ignore_label_batch.append(ignore_label)
 
         x = xp.asarray(image_batch)
-        x_loss, y_loss, w_loss, h_loss, c_loss, p_loss = model(x, label_batch)
+        x_loss, y_loss, w_loss, h_loss, c_loss, p_loss = model(x, label_batch, ignore_label_batch)
         loss = x_loss + y_loss + w_loss + h_loss + c_loss + p_loss
         model.cleargrads()
         loss.backward()
