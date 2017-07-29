@@ -55,6 +55,9 @@ DEFAULT_CONFIG = {
     'min_width': 20,
     'min_height': 20,
     'min_visible_ratio': 0.5,
+    'hue': 0.1,
+    'saturation': 1.5,
+    'exposure': 1.5,
 }
 IMAGE_PATH_EXTENSIONS = ['.jpg', '.png']
 
@@ -105,7 +108,7 @@ def convert_category_to_index(regions, categories, ignore_categories):
     return regions
 
 def convert_regions(regions, crop_rect, input_size, min_width, min_height,
-        min_visible_ratio):
+        min_visible_ratio, mirror):
     ground_truths = []
     ignored = []
     cx, cy, cw, ch = crop_rect
@@ -130,6 +133,8 @@ def convert_regions(regions, crop_rect, input_size, min_width, min_height,
         scale_y = 1.0 / ch
         if x2 - x1 < min_width or y2 - y1 < min_height:
             ignore = True
+        if mirror:
+            x1, x2 = cw - x2, cw - x1
         if ignore:
             ignored.append({
                 'x': (x1 + x2) * 0.5 * scale_x,
@@ -150,14 +155,35 @@ def convert_regions(regions, crop_rect, input_size, min_width, min_height,
             })
     return ground_truths, ignored
 
-def load_image(file_path):
-    return Image.open(file_path).convert('RGB')
+def load_image(file_path, color_space='RGB'):
+    return Image.open(file_path).convert(color_space)
 
-def transform_image(image, crop_rect, input_size):
+def rand_scale(s):
+    x = np.random.random() * (s - 1) + 1
+    if np.random.randint(2) < 1:
+        return x
+    return 1.0 / x
+
+def transform_image(image, crop_rect, input_size, hue, sat, value, mirror):
     cx, cy, cw, ch = crop_rect
     image = image.crop((cx, cy, cx + cw, cy + ch)).resize((input_size, input_size), Image.BILINEAR)
+    hsv_image = np.asarray(image, dtype=np.float32)
+    dh = int((np.random.random() * 2 - 1) * hue * 255)
+    ds = rand_scale(sat)
+    dv = rand_scale(value)
+    h = hsv_image[:,:,0]
+    h += dh
+    if dh > 0:
+        h[h >= 256] -= 256
+    else:
+        h[h < 0] += 256
+    hsv_image[:,:,1] *= ds
+    hsv_image[:,:,2] *= dv
+    image = Image.fromarray(hsv_image.clip(0, 255).astype(np.uint8), 'HSV').convert('RGB')
     image = np.asarray(image, dtype=np.float32) / 255.0
     image = image.transpose(2, 0, 1)
+    if mirror:
+        return image[:,:,::-1]
     return image
 
 def make_data(image_path, annotation_path, categories, ignore_categories):
@@ -170,7 +196,8 @@ def randomize_crop_rect(image_width, image_height, crop_size):
     crop_size = min(image_width, image_height, crop_size)
     x = np.random.randint(0, image_width - crop_size + 1)
     y = np.random.randint(0, image_height - crop_size + 1)
-    return x, y, crop_size, crop_size
+    mirror = np.random.randint(2) < 1
+    return (x, y, crop_size, crop_size), mirror
 
 def main():
     args = parse_args()
@@ -223,6 +250,9 @@ def main():
     model_dir = config['model_dir']
     prefix = config['prefix']
     save_epoch = config['save_epoch']
+    hue = config['hue']
+    saturation = config['saturation']
+    exposure = config['exposure']
     last_time = time.time()
     iterator = chainer.iterators.SerialIterator(dataset, batch_size)
     trained_num = 0
@@ -239,12 +269,13 @@ def main():
         label_batch = []
         ignore_label_batch = []
         for image_path, regions in batch:
-            image = load_image(image_path)
+            image = load_image(image_path, 'HSV')
             image_width, image_height = image.size
-            crop_rect = randomize_crop_rect(image_width, image_height, crop_size)
-            image_batch.append(transform_image(image, crop_rect, train_size))
+            crop_rect, mirror = randomize_crop_rect(image_width, image_height, crop_size)
+            image_batch.append(transform_image(image, crop_rect, train_size,
+            hue, saturation, exposure, mirror))
             label, ignore_label = convert_regions(regions, crop_rect,
-                train_size, min_width, min_height, min_visible_ratio)
+                train_size, min_width, min_height, min_visible_ratio, mirror)
             label_batch.append(label)
             ignore_label_batch.append(ignore_label)
 
