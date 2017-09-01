@@ -131,7 +131,10 @@ def main():
             if not category in categories:
                 continue
             x, y, w, h = region['bbox']
-            vx, vy, vw, vh = region['visible_bbox']
+            if 'visible_bbox' in region:
+                vx, vy, vw, vh = region['visible_bbox']
+            else:
+                vx, vy, vw, vh = region['bbox']
             if not category in categories:
                 continue
             if w < min_width or h < min_height:
