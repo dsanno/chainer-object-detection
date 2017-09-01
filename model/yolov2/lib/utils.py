@@ -180,7 +180,7 @@ def nms(predicted_results, iou_thresh):
 
 # reshape to yolo size
 def reshape_to_yolo_size(img):
-    input_height, input_width, _ = img.shape
+    input_width, input_height = img.size
     min_pixel = 320.0
     #max_pixel = 608
     max_pixel = 1024.0
