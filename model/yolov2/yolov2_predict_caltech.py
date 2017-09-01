@@ -136,6 +136,7 @@ class Predictor:
             })
 
         # nms
+        print len(results)
         nms_results = utils.nms(results, self.iou_thresh)
         return nms_results
 

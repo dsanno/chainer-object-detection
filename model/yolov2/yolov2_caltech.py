@@ -140,13 +140,14 @@ class YOLOv2(Chain):
         return h
 
 class YOLOv2Predictor(Chain):
-    def __init__(self, predictor):
+    def __init__(self, predictor, config={}):
         super(YOLOv2Predictor, self).__init__(predictor=predictor)
         self.anchors = [[0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434], [7.88282, 3.52778], [9.77052, 9.16828]]
-        self.thresh = 0.7
-        self.ignore_thresh = 0.1
+        self.thresh = config.get('train_threshold', 0.7)
+        self.ignore_thresh = config.get('train_ignore_threshold', 0.1)
         self.seen = 0
-        self.unstable_seen = 15000
+        self.unstable_seen = config.get('train_unstable_seen', 15000)
+        self.unstable_seen = 0
 
     def __call__(self, input_x, t, ignore_t):
         if isinstance(input_x, chainer.Variable):
@@ -179,7 +180,11 @@ class YOLOv2Predictor(Chain):
                 box_learning_scale = np.tile(0, x.shape).astype(np.float32)
 
             tconf = np.zeros(conf.shape, dtype=np.float32)
-            conf_learning_scale = np.tile(0.1, conf.shape).astype(np.float32)
+            conf_learning_scale = np.zeros(conf.shape, dtype=np.float32)
+            if xp == np:
+                conf_data = conf.data.copy()
+            else:
+                conf_data = cuda.to_cpu(conf.data)
 
             tprob = prob.data.copy()
 
@@ -216,6 +221,7 @@ class YOLOv2Predictor(Chain):
             # keep confidence of anchor that has more confidence than threshold
             tconf[best_ious > self.thresh] = conf.data.get()[best_ious > self.thresh]
             conf_learning_scale[best_ious > self.thresh] = 0
+            conf_data[best_ious > self.thresh] = 0
 
             # ignored regions are not considered either positive or negative
 
@@ -244,6 +250,7 @@ class YOLOv2Predictor(Chain):
             # do not update confidence for ignored regions
             tconf[best_ious > self.ignore_thresh] = conf.data.get()[best_ious > self.ignore_thresh]
             conf_learning_scale[best_ious > self.ignore_thresh] = 0
+            conf_data[best_ious > self.ignore_thresh] = 0
 
             # adjust x, y, w, h, conf, prob of anchor boxes that have objects
             abs_anchors = self.anchors / np.array([grid_w, grid_h])
@@ -277,6 +284,16 @@ class YOLOv2Predictor(Chain):
                     predicted_iou = box_iou(full_truth_box, predicted_box)
                     tconf[batch, truth_n, :, truth_h, truth_w] = predicted_iou
                     conf_learning_scale[batch, truth_n, :, truth_h, truth_w] = 10.0
+                    conf_data[batch, truth_n, :, truth_h, truth_w] = 0
+
+            n_all = np.prod(conf_learning_scale.shape[1:])
+            for batch in range(batch_size):
+                n_truth_boxes = len(t[batch])
+                n_top = np.maximum(n_truth_boxes * 3, 6)
+                ids = np.argsort(conf_data[batch].ravel())
+                flags = np.zeros(n_all, dtype=bool)
+                flags[ids[-n_top:]] = True
+                conf_learning_scale[batch][flags.reshape(conf_learning_scale[batch].shape)] = 10.0
 
             tx = cuda.to_gpu(tx)
             ty = cuda.to_gpu(ty)

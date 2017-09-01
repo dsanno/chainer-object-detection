@@ -221,6 +221,7 @@ def main():
                 draw.rectangle((x, y, x + w, y + h), outline=(255, 0, 0))
                 label = '{0:.2f}'.format(confidence)
                 draw.text((x, y), label, (255, 128, 128), font=font)
+                draw.text((x, y + 16), region['category'], (255, 128, 128), font=font)
             orig_img.save(output_image_path)
 
     with open(args.output_path, 'w') as f:

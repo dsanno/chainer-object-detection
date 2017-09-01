@@ -218,7 +218,7 @@ def main():
 
     # load model
     yolov2 = YOLOv2(n_classes=len(categories), n_boxes=len(anchors))
-    model = YOLOv2Predictor(yolov2)
+    model = YOLOv2Predictor(yolov2, config)
     model.init_anchor(anchors)
     model.predictor.finetune = False
     if initial_model_path is not None:
