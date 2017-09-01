@@ -63,10 +63,10 @@ def main():
 
     annotation_dir = os.path.join(input_dir, 'Annotations')
     image_dir = os.path.join(input_dir, 'JPEGImages')
-    train_list = os.path.join(input_dir, 'ImageSets', 'Layout', 'train.txt')
-    test_list = os.path.join(input_dir, 'ImageSets', 'Layout', 'val.txt')
+    train_list = os.path.join(input_dir, 'ImageSets', 'Layout', 'trainval.txt')
+    test_list = os.path.join(input_dir, 'ImageSets', 'Layout', 'test.txt')
 
-    out_train_dir = os.path.join(output_dir, 'train')
+    out_train_dir = os.path.join(output_dir, 'trainval')
     make_dirs(out_train_dir)
     make_data(train_list, image_dir, annotation_dir, out_train_dir)
     out_test_dir = os.path.join(output_dir, 'test')
